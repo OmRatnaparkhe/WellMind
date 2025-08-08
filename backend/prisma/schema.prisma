@@ -1,0 +1,67 @@
+// Prisma schema for MindWell
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserProfile {
+  id           String   @id @db.VarChar(128) // Clerk user ID
+  email        String   @unique
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  drawings     Drawing[]
+  checklists   DailyChecklist[]
+}
+
+model Drawing {
+  id         String   @id @default(cuid())
+  userId     String
+  sceneJson  Json
+  aiInsight  String?
+  createdAt  DateTime @default(now())
+
+  user       UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyChecklist {
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime // start of day (UTC)
+  describedDay   Boolean  @default(false)
+  videoSummary   Boolean  @default(false)
+  readBook       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model Book {
+  id          String  @id @default(cuid())
+  title       String
+  author      String
+  coverUrl    String?
+  description String?
+  linkUrl     String?
+  createdAt   DateTime @default(now())
+}
+
+model Video {
+  id          String  @id @default(cuid())
+  title       String
+  youtubeId   String
+  thumbnailUrl String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+
