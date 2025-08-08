@@ -14,8 +14,15 @@ router.post('/', async (req, res) => {
     const auth = (req as any).auth;
     if (!auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { sceneJson } = req.body as { sceneJson: unknown };
-    if (!sceneJson) return res.status(400).json({ error: 'sceneJson required' });
+    const { sceneJson, inputType, textContent } = req.body as { 
+      sceneJson: unknown; 
+      inputType?: 'draw' | 'thoughts' | 'issues';
+      textContent?: string;
+    };
+    
+    if (!sceneJson && !textContent) {
+      return res.status(400).json({ error: 'Either sceneJson or textContent required' });
+    }
 
     // Ensure user profile exists (id = Clerk userId)
     const userId = auth.userId as string;
@@ -26,25 +33,46 @@ router.post('/', async (req, res) => {
     });
 
     const drawing = await prisma.drawing.create({
-      data: { userId, sceneJson },
+      data: { 
+        userId, 
+        sceneJson, 
+        inputType: inputType || 'draw',
+        textContent
+      },
     });
 
-    // Extract text elements from Excalidraw scene
-    let concatenatedText = '';
-    try {
-      const elements = (sceneJson as any)?.elements ?? [];
-      const texts = elements
-        .filter((e: any) => e.type === 'text' && e.text)
-        .map((e: any) => e.text);
-      concatenatedText = texts.join('\n');
-    } catch {}
+    // Extract text content based on input type
+    let contentToAnalyze = '';
+    
+    if (inputType === 'draw' || !inputType) {
+      // Extract text elements from Excalidraw scene
+      try {
+        const elements = (sceneJson as any)?.elements ?? [];
+        const texts = elements
+          .filter((e: any) => e.type === 'text' && e.text)
+          .map((e: any) => e.text);
+        contentToAnalyze = texts.join('\n');
+      } catch {}
+    } else if (inputType === 'thoughts' || inputType === 'issues') {
+      // Use the direct text content
+      contentToAnalyze = textContent || '';
+    }
 
     let aiInsight: string | undefined;
-    if (process.env.GEMINI_API_KEY && concatenatedText.trim().length > 0) {
+    if (process.env.GEMINI_API_KEY && contentToAnalyze.trim().length > 0) {
       try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const prompt = `You are a compassionate therapist. Analyze the following short text for sentiment (positive/neutral/negative), key emotions, and give 2-3 gentle, actionable suggestions. Keep it under 120 words.\n\nText:\n${concatenatedText}`;
+        
+        let prompt = '';
+        if (inputType === 'thoughts') {
+          prompt = `You are a compassionate therapist. Analyze the following thought journal entry for sentiment (positive/neutral/negative), key emotions, and give 2-3 gentle, actionable suggestions for emotional well-being. Keep it under 120 words.\n\nThought:\n${contentToAnalyze}`;
+        } else if (inputType === 'issues') {
+          prompt = `You are a supportive mental health coach. The user has shared something that's not working well for them. Analyze this issue, identify potential root causes, and provide 2-3 practical, compassionate suggestions to address the problem. Keep it under 120 words.\n\nIssue:\n${contentToAnalyze}`;
+        } else {
+          prompt = `You are a compassionate therapist. Analyze the following drawing and text for sentiment (positive/neutral/negative), key emotions, and give 2-3 gentle, actionable suggestions. Keep it under 120 words.\n\nText:\n${contentToAnalyze}`;
+        }
+        
         const result = await model.generateContent(prompt);
         aiInsight = result.response.text();
       } catch (err) {

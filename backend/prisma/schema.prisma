@@ -25,6 +25,8 @@ model Drawing {
   userId     String
   sceneJson  Json
   aiInsight  String?
+  inputType  String   @default("draw") // "draw", "thoughts", "issues"
+  textContent String?  // For storing text input from thoughts and issues
   createdAt  DateTime @default(now())
 
   user       UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)

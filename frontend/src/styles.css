@@ -4,14 +4,69 @@
 
 :root {
   color-scheme: light dark;
+  --transition-standard: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html, body, #root {
   height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100;
+  @apply bg-surface-light dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+@layer base {
+  * {
+    @apply transition-colors duration-200;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-card hover:shadow-glow transition-all duration-300;
+  }
+  
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary hover:bg-primary-dark text-white shadow-md hover:shadow-glow;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700;
+  }
+  
+  .btn-outline {
+    @apply btn border border-primary text-primary hover:bg-primary hover:text-white;
+  }
+}
+
+.glass-effect {
+  @apply bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md border border-white/20 dark:border-neutral-800/20;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-brand-blue animate-gradient bg-300%;
 }
 
 

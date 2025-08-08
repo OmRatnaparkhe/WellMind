@@ -34,18 +34,33 @@ function ProtectedRoutes() {
 
 export default function App() {
   return (
-    <div className="min-h-screen">
-      <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
+    <div className="min-h-screen bg-gradient-to-br from-brand-lavender/5 to-brand-blue/10 dark:from-neutral-950 dark:to-neutral-900">
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
         <ThemeToggle />
-        <UserButton afterSignOutUrl="/" />
+        <div className="relative overflow-hidden rounded-full shadow-md hover:shadow-glow transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-brand-blue/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+          <UserButton 
+            afterSignOutUrl="/" 
+            appearance={{
+              elements: {
+                userButtonAvatarBox: {
+                  width: '36px',
+                  height: '36px'
+                }
+              }
+            }}
+          />
+        </div>
       </div>
       <Routes>
         <Route
           path="/sign-in"
           element={
             <SignedOut>
-              <div className="min-h-screen grid place-items-center p-4">
-                <SignIn signUpUrl="/sign-up" />
+              <div className="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-brand-lavender/10 to-brand-blue/10 dark:from-neutral-900 dark:to-neutral-950">
+                <div className="glass-effect p-8 rounded-2xl shadow-glow animate-fadeInUp">
+                  <SignIn signUpUrl="/sign-up" />
+                </div>
               </div>
             </SignedOut>
           }
