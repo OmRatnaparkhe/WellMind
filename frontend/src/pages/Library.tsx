@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '@/lib/api';
 
+// Define the Book type
 type Book = {
   id: string;
   title: string;
@@ -10,12 +11,73 @@ type Book = {
   linkUrl?: string;
 };
 
+/**
+ * A new component to display the details for a single selected book.
+ */
+function BookDetailView({ book, onBack }: { book: Book, onBack: () => void }) {
+  return (
+    // This wrapper div controls the size and centers the detail view
+    <div className="max-w-4xl mx-auto animate-fadeInUp">
+      <div className="space-y-6">
+        <button onClick={onBack} className="text-primary font-semibold hover:underline">&larr; Back to all books</button>
+        
+        <div className="flex flex-col sm:flex-row gap-8 bg-white/60 dark:bg-neutral-800/50 p-6 sm:p-8 rounded-2xl shadow-card">
+          {/* Book Cover */}
+          <div className="flex-shrink-0 mx-auto sm:mx-0">
+            {book.coverUrl && (
+              <img 
+                src={book.coverUrl} 
+                alt={`Cover of ${book.title}`} 
+                className="w-48 sm:w-56 h-auto rounded-lg shadow-2xl"
+              />
+            )}
+          </div>
+          
+          {/* Book Info */}
+          <div className="flex flex-col text-center sm:text-left">
+            <h2 className="text-3xl font-bold">{book.title}</h2>
+            <p className="text-xl text-neutral-600 dark:text-neutral-400 mt-1">by {book.author}</p>
+            <p className="mt-4 text-base flex-grow">{book.description}</p>
+            
+            {book.linkUrl && (
+              <a 
+                href={book.linkUrl} 
+                target="_blank" // The external link now opens in a new tab from the detail view
+                rel="noopener noreferrer"
+                className="inline-block mt-6 px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Find in Store or Library
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/**
+ * The main Library component, updated to switch between grid and detail views.
+ */
 export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
+  // 1. State to track the selected book
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+
   useEffect(() => {
-    apiGet<Book[]>('/library/books').then(setBooks).catch(() => {});
+    // Added error handling as a best practice
+    apiGet<Book[]>('/library/books')
+      .then(setBooks)
+      .catch((err) => console.error("Failed to fetch books:", err));
   }, []);
 
+  // 2. If a book is selected, render the detail view
+  if (selectedBook) {
+    return <BookDetailView book={selectedBook} onBack={() => setSelectedBook(null)} />;
+  }
+
+  // 3. Otherwise, render the grid view
   return (
     <div className="animate-fadeInUp">
       <div className="relative mb-8 rounded-2xl p-6 glass-effect shadow-card overflow-hidden">
@@ -24,51 +86,31 @@ export default function Library() {
         <p className="text-neutral-600 dark:text-neutral-300 relative z-10 mt-2">Explore books that can guide you on your personal growth journey.</p>
       </div>
       
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 perspective-1000">
+      <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {books.map((b, index) => (
-          <a 
+          // 4. Changed <a> tag to a <button> with an onClick handler
+          <button 
             key={b.id} 
-            href={b.linkUrl} 
-            target="_blank" 
-            rel="noreferrer" 
-            className="group rounded-xl overflow-hidden block bg-white/60 dark:bg-neutral-800/50 backdrop-blur-sm shadow-card hover:shadow-glow transition-all duration-500 transform hover:-translate-y-1 hover:rotate-y-5 animate-fadeInUp"
+            onClick={() => setSelectedBook(b)}
+            className="group rounded-xl overflow-hidden block bg-white/60 dark:bg-neutral-800/50 backdrop-blur-sm shadow-card hover:shadow-glow transition-all duration-500 transform hover:-translate-y-1 text-left"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="relative overflow-hidden">
               {b.coverUrl && (
-                <div className="relative">
-                  <img 
-                    src={b.coverUrl} 
-                    alt={b.title} 
-                    className="w-full aspect-[3/4] object-cover transition-transform duration-700 group-hover:scale-105" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                      <div className="text-sm font-medium">Read Now</div>
-                    </div>
-                  </div>
-                </div>
+                <img 
+                  src={b.coverUrl} 
+                  alt={b.title} 
+                  className="w-full aspect-[3/4] object-cover transition-transform duration-700 group-hover:scale-105" 
+                />
               )}
             </div>
             <div className="p-4">
-              <div className="font-semibold text-lg group-hover:text-primary transition-colors duration-300">{b.title}</div>
-              <div className="text-sm text-neutral-500 dark:text-neutral-400">{b.author}</div>
-              {b.description && <p className="text-sm mt-2 text-neutral-600 dark:text-neutral-300 line-clamp-2">{b.description}</p>}
-              
-              <div className="mt-3 flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <svg key={star} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#FFC107" stroke="#FFC107" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                  </svg>
-                ))}
-                <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-1">5.0</span>
-              </div>
+              <div className="font-semibold text-lg group-hover:text-primary transition-colors duration-300 truncate">{b.title}</div>
+              <div className="text-sm text-neutral-500 dark:text-neutral-400 truncate">{b.author}</div>
             </div>
-          </a>
+          </button>
         ))}
       </div>
     </div>
   );
 }
-
-

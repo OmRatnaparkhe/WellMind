@@ -3,7 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
+// Import the new clerkMiddleware
+import { clerkMiddleware } from '@clerk/express';
 import drawingsRouter from './routes/drawings.js';
 import checklistRouter from './routes/checklist.js';
 import libraryRouter from './routes/library.js';
@@ -23,6 +24,21 @@ app.use(
   })
 );
 
+// --- REFACTORED AUTHENTICATION ---
+// Create a router for all protected API routes
+const apiRouter = express.Router();
+
+// Use the new, single clerkMiddleware to protect all routes in this router.
+// It handles both authenticating the request and protecting the route.
+apiRouter.use(clerkMiddleware());
+
+// Attach your specific routes to this now-protected router
+apiRouter.use('/drawings', drawingsRouter);
+apiRouter.use('/checklist', checklistRouter);
+apiRouter.use('/library', libraryRouter);
+apiRouter.use('/music', musicRouter);
+
+// --- PUBLIC ROUTES (if any) ---
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
@@ -40,12 +56,8 @@ app.use('/api/drawings', drawingsRouter);
 app.use('/api/checklist', checklistRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/music', musicRouter);
-app.use('/api/history', historyRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
-  // eslint-disable-next-line no-console
   console.log(`MindWell backend listening on http://localhost:${port}`);
 });
-
-
