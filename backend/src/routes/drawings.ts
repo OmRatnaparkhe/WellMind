@@ -35,9 +35,9 @@ router.post('/', async (req, res) => {
     const drawing = await prisma.drawing.create({
       data: { 
         userId, 
-        sceneJson, 
-        inputType: inputType || 'draw',
-        textContent
+        sceneJson: sceneJson as any,
+        ...(inputType ? { inputType } : { inputType: 'draw' }),
+        ...(textContent ? { textContent } : {})
       },
     });
 

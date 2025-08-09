@@ -9,6 +9,7 @@ import Library from './pages/Library';
 import Videos from './pages/Videos';
 import Quizz from './pages/Quizz';
 import Appointment from './pages/Appointment';
+import MyDays from './pages/MyDays';
 import { SidebarLayout } from './components/SidebarLayout';
 import { ThemeToggle } from './components/ThemeToggle';
 
@@ -25,6 +26,7 @@ function ProtectedRoutes() {
           <Route path="/videos" element={<Videos />} />
           <Route path="/quizz" element={<Quizz />} />
           <Route path="/appointment" element={<Appointment />} />
+          <Route path="/my-days" element={<MyDays />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </SidebarLayout>

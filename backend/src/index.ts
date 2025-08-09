@@ -8,6 +8,7 @@ import drawingsRouter from './routes/drawings.js';
 import checklistRouter from './routes/checklist.js';
 import libraryRouter from './routes/library.js';
 import musicRouter from './routes/music.js';
+import historyRouter from './routes/history.js';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/drawings', drawingsRouter);
 app.use('/api/checklist', checklistRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/music', musicRouter);
+app.use('/api/history', historyRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
