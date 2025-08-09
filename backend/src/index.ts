@@ -4,12 +4,20 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 // Import the new clerkMiddleware
-import { clerkMiddleware } from '@clerk/express';
+import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 import drawingsRouter from './routes/drawings.js';
 import checklistRouter from './routes/checklist.js';
 import libraryRouter from './routes/library.js';
 import musicRouter from './routes/music.js';
 import historyRouter from './routes/history.js';
+import moodRouter from './routes/mood.js';
+import journalRouter from './routes/journal';
+import cognitiveRouter from './routes/cognitive';
+import quizRouter from './routes/quiz.js';
+import onboardingRouter from './routes/onboarding';
+import wellnessRouter from './routes/wellness';
+import alertsRouter from './routes/alerts';
+
 
 const app = express();
 
@@ -30,13 +38,7 @@ const apiRouter = express.Router();
 
 // Use the new, single clerkMiddleware to protect all routes in this router.
 // It handles both authenticating the request and protecting the route.
-apiRouter.use(clerkMiddleware());
-
-// Attach your specific routes to this now-protected router
-apiRouter.use('/drawings', drawingsRouter);
-apiRouter.use('/checklist', checklistRouter);
-apiRouter.use('/library', libraryRouter);
-apiRouter.use('/music', musicRouter);
+apiRouter.use(ClerkExpressRequireAuth());
 
 // --- PUBLIC ROUTES (if any) ---
 app.get('/api/health', (_req, res) => {
@@ -44,7 +46,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Attach Clerk auth to all requests
-app.use(ClerkExpressWithAuth());
+app.use(ClerkExpressRequireAuth());
 
 // Guard: require authenticated user for all /api routes
 app.use('/api', (req, res, next) => {
@@ -56,6 +58,13 @@ app.use('/api/drawings', drawingsRouter);
 app.use('/api/checklist', checklistRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/music', musicRouter);
+app.use('/api/mood', moodRouter);
+app.use('/api/journal', journalRouter);
+app.use('/api/cognitive', cognitiveRouter);
+app.use('/api/quiz', quizRouter);
+app.use('/api/onboarding', onboardingRouter);
+app.use('/api/wellness', wellnessRouter);
+app.use('/api/alerts', alertsRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {

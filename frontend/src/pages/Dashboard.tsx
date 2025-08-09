@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '@/lib/api';
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
+import { Sparkles, ArrowRight, CheckCircle2, XCircle, Smile, BookType, Brain } from 'lucide-react';
+import WellnessScore from '../components/WellnessScore';
+import RiskAlert from '../components/RiskAlert';
 
 type Checklist = {
   id: string;
@@ -22,7 +24,9 @@ export default function Dashboard() {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
 
   useEffect(() => {
-    apiGet<Checklist>('/checklist/today').then(setChecklist).catch(() => {});
+    apiGet<Checklist>('/checklist/today').then(setChecklist).catch(error => {
+      console.error('Failed to fetch checklist:', error);
+    });
   }, []);
 
   const score = useMemo(() => {
@@ -36,6 +40,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-10 animate-fadeInUp">
       <HeroHeader />
+      
+      <RiskAlert />
 
       <div className="grid md:grid-cols-4 gap-6">
         <div className="col-span-1 rounded-2xl p-8 text-center glass-effect shadow-glow transform transition-all duration-500 hover:scale-105">
@@ -65,6 +71,37 @@ export default function Dashboard() {
             <SummaryPill value="5" label="Books" />
             <SummaryPill value="8" label="Videos" />
             <SummaryPill value="3" label="Draw" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <WellnessScore />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Daily Mental Wellness</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Link to="/mood-check" className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <Smile size={32} className="text-blue-500 mb-2" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Mood Check</span>
+            </Link>
+            
+            <Link to="/journal" className="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <BookType size={32} className="text-purple-500 mb-2" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Journal</span>
+            </Link>
+            
+            <Link to="/cognitive" className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <Brain size={32} className="text-green-500 mb-2" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Cognitive</span>
+            </Link>
+          </div>
+          
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              <strong>Tip:</strong> Regular check-ins with your mood and thoughts can help you understand patterns in your mental health and identify triggers.
+            </p>
           </div>
         </div>
       </div>

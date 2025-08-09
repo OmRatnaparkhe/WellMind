@@ -1,4 +1,4 @@
-// Prisma schema for MindWell
+// Prisma schema for MindWell - Enhanced Mental Health Application
 
 generator client {
   provider = "prisma-client-js"
@@ -10,26 +10,42 @@ datasource db {
 }
 
 model UserProfile {
-  id           String   @id @db.VarChar(128) // Clerk user ID
-  email        String   @unique
-  displayName  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  drawings     Drawing[]
-  checklists   DailyChecklist[]
+  id                String    @id @db.VarChar(128) // Clerk user ID
+  email             String    @unique
+  displayName       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  consentSettings   Json?     // Privacy and consent settings
+  baselineCompleted Boolean   @default(false)
+  
+  // Existing relations
+  drawings          Drawing[]
+  checklists        DailyChecklist[]
+  
+  // New relations
+  moodEntries       MoodEntry[]
+  journalEntries    JournalEntry[]
+  cognitiveEntries  CognitiveEntry[]
+  quizResponses     QuizResponse[]
+  surveyResponses   SurveyResponse[]
+  wellnessScores    WellnessScore[]
+  musicUsage        MusicUsage[]
+  therapistContacts TherapistContact[]
 }
 
 model Drawing {
-  id         String   @id @default(cuid())
-  userId     String
-  sceneJson  Json
-  aiInsight  String?
-  inputType  String   @default("draw") // "draw", "thoughts", "issues"
-  textContent String?  // For storing text input from thoughts and issues
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  sceneJson      Json
+  aiInsight      String?
+  inputType      String   @default("draw") // "draw", "thoughts", "issues"
+  textContent    String?  // For storing text input from thoughts and issues
+  createdAt      DateTime @default(now())
+  sentimentScore Float?   // Added for sentiment analysis
+  keywords       String[] @default([])
+  riskFlags      String[] @default([])
 
-  user       UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DailyChecklist {
@@ -39,6 +55,10 @@ model DailyChecklist {
   describedDay   Boolean  @default(false)
   videoSummary   Boolean  @default(false)
   readBook       Boolean  @default(false)
+  moodCheckin    Boolean  @default(false)
+  creativeTask   Boolean  @default(false) // Drawing or journaling
+  cognitiveTask  Boolean  @default(false) // Video summary
+  quizCompleted  Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -54,16 +74,177 @@ model Book {
   coverUrl    String?
   description String?
   linkUrl     String?
+  category    String? // Mental health category
   createdAt   DateTime @default(now())
 }
 
 model Video {
-  id          String  @id @default(cuid())
-  title       String
-  youtubeId   String
-  thumbnailUrl String?
-  description String?
-  createdAt   DateTime @default(now())
+  id             String  @id @default(cuid())
+  title          String
+  youtubeId      String
+  thumbnailUrl   String?
+  description    String?
+  duration       Int?    // In seconds
+  category       String? // Mental health category
+  createdAt      DateTime @default(now())
+  
+  cognitiveEntries CognitiveEntry[]
+}
+
+// New models for mental health application
+model MoodEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  score     Int      // 1-10 scale
+  emoji     String?  // Emoji representation
+  note      String?
+  createdAt DateTime @default(now())
+  
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model JournalEntry {
+  id             String   @id @default(cuid())
+  userId         String
+  content        String   @db.Text
+  sentimentScore Float?
+  keywords       String[] @default([])
+  riskFlags      String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CognitiveEntry {
+  id                 String   @id @default(cuid())
+  userId             String
+  videoId            String
+  summary            String   @db.Text
+  comprehensionScore Float?
+  exerciseType       String?
+  score              Float?
+  duration           Int?
+  metadata           Json?    @default("{}")
+  createdAt          DateTime @default(now())
+  
+  user               UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video              Video      @relation(fields: [videoId], references: [id])
+}
+
+model QuizResponse {
+  id             String   @id @default(cuid())
+  userId         String
+  quizId         String
+  answers        Json
+  score          Float?
+  createdAt      DateTime @default(now())
+  
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz           Quiz      @relation(fields: [quizId], references: [id])
+}
+
+model Quiz {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  questions      Json
+  type           String   // "cognitive" or "reflective"
+  createdAt      DateTime @default(now())
+  
+  responses      QuizResponse[]
+}
+
+model SurveyResponse {
+  id             String   @id @default(cuid())
+  userId         String
+  surveyType     String   // "PHQ9", "GAD7", "sleep", "social"
+  answers        Json
+  score          Float?
+  createdAt      DateTime @default(now())
+  
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WellnessScore {
+  id                 String   @id @default(cuid())
+  userId             String
+  overallScore       Float
+  moodScore          Float
+  stressScore        Float
+  cognitiveScore     Float
+  sleepScore         Float
+  socialScore        Float
+  recommendations    String[] @default([])
+  createdAt          DateTime @default(now())
+  weekOf             DateTime // Start of the week
+  
+  user               UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, weekOf])
+}
+
+model MusicUsage {
+  id             String   @id @default(cuid())
+  userId         String
+  musicId        String
+  duration       Int      // In seconds
+  createdAt      DateTime @default(now())
+  
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  music          Music     @relation(fields: [musicId], references: [id])
+}
+
+model Music {
+  id             String   @id @default(cuid())
+  title          String
+  artist         String
+  url            String
+  coverUrl       String?
+  category       String   // "relaxation", "focus", "sleep", etc.
+  createdAt      DateTime @default(now())
+  
+  usages         MusicUsage[]
+}
+
+model TherapistContact {
+  id             String   @id @default(cuid())
+  userId         String
+  therapistId    String
+  message        String?  
+  status         String   // "requested", "contacted", "completed"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  therapist      Therapist  @relation(fields: [therapistId], references: [id])
+}
+
+model Therapist {
+  id             String   @id @default(cuid())
+  name           String
+  specialty      String
+  bio            String?
+  contactInfo    String
+  imageUrl       String?
+  createdAt      DateTime @default(now())
+  
+  contacts       TherapistContact[]
+}
+
+model RiskAlert {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String   // journal, mood, mood_trend, quiz, other
+  source       String   // journal_entry, mood_entry, mood_analysis, quiz_result, system
+  message      String
+  severity     String   // low, medium, high
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([acknowledged])
 }
 
 

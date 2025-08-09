@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Home, CheckSquare, PenTool, Video, Music, BookOpen, Calendar, HelpCircle, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Home, CheckSquare, PenTool, Video, Music, BookOpen, Calendar, HelpCircle, ChevronLeft, ChevronRight, Clock, Smile, BookType, Brain } from 'lucide-react';
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -97,6 +97,30 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               <Clock size={20} className="relative" />
             </div>
             <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>My Days</span>
+          </Link>
+          
+          <Link className={linkClass('/mood-check')} to="/mood-check">
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <Smile size={20} className="relative" />
+            </div>
+            <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Mood Check</span>
+          </Link>
+          
+          <Link className={linkClass('/journal')} to="/journal">
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <BookType size={20} className="relative" />
+            </div>
+            <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Journal</span>
+          </Link>
+          
+          <Link className={linkClass('/cognitive')} to="/cognitive">
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <Brain size={20} className="relative" />
+            </div>
+            <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Cognitive</span>
           </Link>
         </nav>
       </aside>

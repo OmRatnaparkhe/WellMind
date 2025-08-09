@@ -10,6 +10,10 @@ import Videos from './pages/Videos';
 import Quizz from './pages/Quizz';
 import Appointment from './pages/Appointment';
 import MyDays from './pages/MyDays';
+import MoodCheck from './pages/MoodCheck';
+import Journal from './pages/Journal';
+import CognitiveExercises from './pages/CognitiveExercises';
+import Onboarding from './pages/Onboarding';
 import { SidebarLayout } from './components/SidebarLayout';
 import { ThemeToggle } from './components/ThemeToggle';
 
@@ -27,6 +31,9 @@ function ProtectedRoutes() {
           <Route path="/quizz" element={<Quizz />} />
           <Route path="/appointment" element={<Appointment />} />
           <Route path="/my-days" element={<MyDays />} />
+          <Route path="/mood-check" element={<MoodCheck />} />
+          <Route path="/journal" element={<Journal />} />
+          <Route path="/cognitive" element={<CognitiveExercises />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </SidebarLayout>
@@ -78,6 +85,7 @@ export default function App() {
           }
         />
         <Route path="/" element={<Landing />} />
+        <Route path="/onboarding" element={<SignedIn><Onboarding /></SignedIn>} />
         {/* === THE FIX IS HERE === */}
         {/* This tells the router to handle all other paths with the ProtectedRoutes component */}
         <Route path="/*" element={<ProtectedRoutes />} />
