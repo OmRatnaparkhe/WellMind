@@ -12,7 +12,7 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@clerk/clerk-sdk-node": "^5.0.33",
+    "@clerk/express": "^1.7.17",
     "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^5.18.0",
     "axios": "^1.7.7",
@@ -35,5 +35,3 @@
     "typescript": "^5.5.4"
   }
 }
-
-

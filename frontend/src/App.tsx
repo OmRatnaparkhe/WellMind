@@ -39,8 +39,8 @@ export default function App() {
         <ThemeToggle />
         <div className="relative overflow-hidden rounded-full shadow-md hover:shadow-glow transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-brand-blue/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-          <UserButton 
-            afterSignOutUrl="/" 
+          <UserButton
+            afterSignOutUrl="/"
             appearance={{
               elements: {
                 userButtonAvatarBox: {
@@ -76,10 +76,10 @@ export default function App() {
           }
         />
         <Route path="/" element={<Landing />} />
+        {/* === THE FIX IS HERE === */}
+        {/* This tells the router to handle all other paths with the ProtectedRoutes component */}
+        <Route path="/*" element={<ProtectedRoutes />} />
       </Routes>
-      <ProtectedRoutes />
     </div>
   );
 }
-
-
