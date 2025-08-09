@@ -95,7 +95,7 @@ export default function Videos() {
 
   useEffect(() => {
     apiGet<Video[]>('/library/videos')
-      .then(setVideos)
+      .then((arr) => setVideos((arr || []).slice(0, 8)))
       .catch((err) => console.error("Failed to fetch videos:", err));
   }, []);
 

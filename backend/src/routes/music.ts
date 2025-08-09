@@ -42,6 +42,32 @@ router.get('/playlists', async (_req, res) => {
   }
 });
 
+router.get('/playlist/:id/tracks', async (req, res) => {
+  try {
+    const token = await getSpotifyAccessToken();
+    const { id } = req.params;
+    const tracksRes = await axios.get(`https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/tracks?limit=100`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const items = (tracksRes.data.items as any[]).map((it) => it.track).filter(Boolean);
+    const tracks = items
+      .map((t: any) => ({
+        id: t.id,
+        title: t.name,
+        artist: (t.artists || []).map((a: any) => a.name).join(', '),
+        image: t.album?.images?.[0]?.url,
+        previewUrl: t.preview_url, // 30s preview
+        externalUrl: t.external_urls?.spotify,
+      }))
+      .filter((t: any) => !!t.previewUrl);
+    res.json(tracks);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch playlist tracks' });
+  }
+});
+
 export default router;
 
 

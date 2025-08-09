@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, addDays, startOfDay } from 'date-fns';
 
 const router = Router();
 
@@ -14,156 +14,101 @@ function getWeekEnd(date = new Date()): Date {
   return endOfWeek(date, { weekStartsOn: 1 }); // Week ends on Sunday
 }
 
-// Calculate and store wellness score
+// Calculate and store wellness score (only Mood, Cognitive, Daily Checklist)
 async function calculateWellnessScore(userId: string, weekOf: Date) {
-  // Get the start and end of the week
   const weekStart = getWeekStart(weekOf);
   const weekEnd = getWeekEnd(weekOf);
 
-  // Get mood entries for the week
+  // 1) Mood: average (1-10) → percentage
   const moodEntries = await prisma.moodEntry.findMany({
     where: {
       userId,
-      createdAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
+      createdAt: { gte: weekStart, lte: weekEnd },
     },
   });
+  const moodAvg10 =
+    moodEntries.length > 0
+      ? moodEntries.reduce((sum, e) => sum + e.score, 0) / moodEntries.length
+      : 5; // neutral
+  const moodScore = Math.max(0, Math.min(100, Math.round(moodAvg10 * 10)));
 
-  // Get survey responses for the week
-  const phq9Response = await prisma.surveyResponse.findFirst({
-    where: {
-      userId,
-      surveyType: 'PHQ9',
-      createdAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  const gad7Response = await prisma.surveyResponse.findFirst({
-    where: {
-      userId,
-      surveyType: 'GAD7',
-      createdAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  const sleepResponse = await prisma.surveyResponse.findFirst({
-    where: {
-      userId,
-      surveyType: 'sleep',
-      createdAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  const socialResponse = await prisma.surveyResponse.findFirst({
-    where: {
-      userId,
-      surveyType: 'social',
-      createdAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  // Get cognitive entries for the week
+  // 2) Cognitive: prefer `score` (0-100). If missing, fallback to `comprehensionScore` (0-10) → percentage
   const cognitiveEntries = await prisma.cognitiveEntry.findMany({
     where: {
       userId,
-      createdAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
+      createdAt: { gte: weekStart, lte: weekEnd },
+    },
+  });
+  let cognitiveScore = 50; // neutral default
+  if (cognitiveEntries.length > 0) {
+    const pctScores = cognitiveEntries.map((e) => {
+      if (typeof e.score === 'number') return e.score;
+      if (typeof e.comprehensionScore === 'number') return e.comprehensionScore * 10;
+      return 50;
+    });
+    const avg = pctScores.reduce((a, b) => a + b, 0) / pctScores.length;
+    cognitiveScore = Math.max(0, Math.min(100, Math.round(avg)));
+  }
+
+  // 2.5) Weekly Quiz: use this week's quizResponse (percentage 0-100) if exists
+  const weeklyQuiz = await prisma.quiz.findFirst({
+    where: { type: 'weekly', createdAt: { gte: weekStart, lte: weekEnd } },
+  });
+  let weeklyQuizScore = 50;
+  if (weeklyQuiz) {
+    const resp = await prisma.quizResponse.findFirst({
+      where: { userId, quizId: weeklyQuiz.id },
+      orderBy: { createdAt: 'desc' },
+      select: { score: true },
+    });
+    if (typeof resp?.score === 'number') weeklyQuizScore = Math.max(0, Math.min(100, Math.round(resp.score)));
+  }
+
+  // 3) Daily Checklist: use three measured tasks from dashboard (describedDay, videoSummary, readBook)
+  const checklists = await prisma.dailyChecklist.findMany({
+    where: {
+      userId,
+      date: { gte: startOfDay(weekStart), lte: startOfDay(weekEnd) },
     },
   });
 
-  // Calculate mood score (0-10 scale)
-  const moodScore = moodEntries.length > 0
-    ? moodEntries.reduce((sum, entry) => sum + entry.score, 0) / moodEntries.length
-    : 5; // Default to neutral if no entries
+  // Map date string (yyyy-mm-dd) → record
+  const dateKey = (d: Date) => startOfDay(d).toISOString();
+  const checklistByDay = new Map<string, (typeof checklists)[number]>();
+  for (const c of checklists) checklistByDay.set(dateKey(c.date), c);
 
-  // Calculate stress score (0-10 scale, inverted from GAD-7 which is 0-21)
-  // Lower GAD-7 is better, so we invert: 10 - (gad7Score / 21 * 10)
-  const stressScore = gad7Response?.score !== null && gad7Response?.score !== undefined
-    ? 10 - (gad7Response.score / 21 * 10)
-    : 5; // Default to neutral if no response
+  let checklistScores: number[] = [];
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(weekStart, i);
+    if (day > weekEnd) break;
+    const key = dateKey(day);
+    const rec = checklistByDay.get(key);
+    const tasks = [rec?.describedDay, rec?.videoSummary, rec?.readBook];
+    const completed = tasks.filter(Boolean).length;
+    const pct = Math.round((completed / 3) * 100);
+    checklistScores.push(pct);
+  }
+  const checklistScore =
+    checklistScores.length > 0
+      ? Math.round(checklistScores.reduce((a, b) => a + b, 0) / checklistScores.length)
+      : 0;
 
-  // Calculate cognitive score (0-10 scale)
-  const cognitiveScore = cognitiveEntries.length > 0
-    ? cognitiveEntries.reduce((sum, entry) => sum + (entry.comprehensionScore || 0), 0) / cognitiveEntries.length
-    : 5; // Default to neutral if no entries
-
-  // Sleep score (already on 0-10 scale)
-  const sleepScore = sleepResponse?.score !== null && sleepResponse?.score !== undefined
-    ? sleepResponse.score
-    : 5; // Default to neutral if no response
-
-  // Social score (already on 0-10 scale)
-  const socialScore = socialResponse?.score !== null && socialResponse?.score !== undefined
-    ? socialResponse.score
-    : 5; // Default to neutral if no response
-
-  // Calculate overall wellness score with weighted components
-  // Mood & Emotion (35%), Stress & Anxiety (25%), Cognitive Function (15%), Sleep & Energy (15%), Social Connectedness (10%)
-  const overallScore = (
+  // Overall percentage with weights: Mood 35%, Cognitive 25%, Checklist 25%, Weekly Quiz 15%
+  const overallScore = Math.round(
     moodScore * 0.35 +
-    stressScore * 0.25 +
-    cognitiveScore * 0.15 +
-    sleepScore * 0.15 +
-    socialScore * 0.10
+    cognitiveScore * 0.25 +
+    checklistScore * 0.25 +
+    weeklyQuizScore * 0.15
   );
 
-  // Generate recommendations based on scores
+  // Simple recommendations tied to these three pillars
   const recommendations: string[] = [];
+  if (moodScore < 50) recommendations.push('Try a quick mood check-in and a short gratitude note today.');
+  if (cognitiveScore < 50) recommendations.push('Do one focused cognitive exercise to boost attention.');
+  if (checklistScore < 50) recommendations.push('Aim to complete at least two checklist items today.');
+  if (weeklyQuizScore < 50) recommendations.push('Take the weekly check-in to get personalized recommendations.');
 
-  if (moodScore < 4) {
-    recommendations.push('Consider journaling daily to track your emotions and identify patterns.');
-    recommendations.push('Try incorporating a brief mindfulness practice into your morning routine.');
-  }
-
-  if (stressScore < 4) {
-    recommendations.push('Practice deep breathing exercises when feeling overwhelmed.');
-    recommendations.push('Consider limiting news and social media consumption if it increases anxiety.');
-  }
-
-  if (cognitiveScore < 4) {
-    recommendations.push('Try brain-training exercises to improve focus and cognitive function.');
-    recommendations.push('Ensure you\'re taking short breaks during focused work periods.');
-  }
-
-  if (sleepScore < 4) {
-    recommendations.push('Establish a consistent sleep schedule, even on weekends.');
-    recommendations.push('Create a relaxing bedtime routine to signal to your body it\'s time to sleep.');
-  }
-
-  if (socialScore < 4) {
-    recommendations.push('Schedule a brief call with a friend or family member this week.');
-    recommendations.push('Consider joining a community group aligned with your interests.');
-  }
-
-  // Create or update wellness score
+  // Persist. Schema still has legacy fields; store only what we use and zero the rest.
   const wellnessScore = await prisma.wellnessScore.upsert({
     where: {
       userId_weekOf: {
@@ -174,10 +119,12 @@ async function calculateWellnessScore(userId: string, weekOf: Date) {
     update: {
       overallScore,
       moodScore,
-      stressScore,
       cognitiveScore,
-      sleepScore,
-      socialScore,
+      // Reuse sleepScore column to store checklist score; reuse socialScore to store weekly quiz score
+      sleepScore: checklistScore,
+      socialScore: weeklyQuizScore,
+      // Legacy/unused fields set to 0
+      stressScore: 0,
       recommendations,
     },
     create: {
@@ -185,10 +132,10 @@ async function calculateWellnessScore(userId: string, weekOf: Date) {
       weekOf: weekStart,
       overallScore,
       moodScore,
-      stressScore,
       cognitiveScore,
-      sleepScore,
-      socialScore,
+      sleepScore: checklistScore,
+      stressScore: 0,
+      socialScore: weeklyQuizScore,
       recommendations,
     },
   });
@@ -205,21 +152,8 @@ router.get('/current', async (req, res) => {
   try {
     const weekStart = getWeekStart();
 
-    // Check if wellness score exists for current week
-    let wellnessScore = await prisma.wellnessScore.findUnique({
-      where: {
-        userId_weekOf: {
-          userId,
-          weekOf: weekStart,
-        },
-      },
-    });
-
-    // If no wellness score exists, calculate it
-    if (!wellnessScore) {
-      wellnessScore = await calculateWellnessScore(userId, new Date());
-    }
-
+    // Always recalculate to avoid stale data
+    const wellnessScore = await calculateWellnessScore(userId, new Date());
     res.json(wellnessScore);
   } catch (error) {
     console.error('Error getting wellness score:', error);

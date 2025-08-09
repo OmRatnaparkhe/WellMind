@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '@/lib/api';
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, CheckCircle2, XCircle, Smile, BookType, Brain } from 'lucide-react';
+import { Sparkles, Smile, BookType, Brain } from 'lucide-react';
 import WellnessScore from '../components/WellnessScore';
 import RiskAlert from '../components/RiskAlert';
 
@@ -10,6 +10,7 @@ type Checklist = {
   describedDay: boolean;
   videoSummary: boolean;
   readBook: boolean;
+  creativeTask?: boolean;
 };
 
 const QUOTES = [
@@ -22,6 +23,7 @@ const QUOTES = [
 
 export default function Dashboard() {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
+  const [weeklyQuizTaken, setWeeklyQuizTaken] = useState<boolean | null>(null);
 
   useEffect(() => {
     apiGet<Checklist>('/checklist/today').then(setChecklist).catch(error => {
@@ -29,10 +31,33 @@ export default function Dashboard() {
     });
   }, []);
 
+  useEffect(() => {
+    // Check if weekly quiz has been taken
+    (async () => {
+      try {
+        const quiz: any = await apiGet('/quiz/weekly/current');
+        if (!quiz?.id) {
+          setWeeklyQuizTaken(false);
+          return;
+        }
+        const history: Array<{ id: string; score: number; createdAt: string }> = await apiGet(`/quiz/history/${quiz.id}`);
+        setWeeklyQuizTaken((history || []).length > 0);
+      } catch (e) {
+        setWeeklyQuizTaken(false);
+      }
+    })();
+  }, []);
+
   const score = useMemo(() => {
     if (!checklist) return 0;
-    const done = [checklist.describedDay, checklist.videoSummary, checklist.readBook].filter(Boolean).length;
-    return Math.round((done / 3) * 100);
+    const tasks = [
+      checklist.describedDay,
+      checklist.videoSummary,
+      checklist.readBook,
+      checklist.creativeTask ?? false,
+    ];
+    const done = tasks.filter(Boolean).length;
+    return Math.round((done / tasks.length) * 100);
   }, [checklist]);
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], []);
@@ -42,6 +67,18 @@ export default function Dashboard() {
       <HeroHeader />
       
       <RiskAlert />
+
+      {weeklyQuizTaken === false && (
+        <div className="rounded-2xl p-6 border bg-gradient-to-br from-brand-blue/10 to-brand-purple/10 dark:from-brand.blue/10 dark:to-brand.purple/10 backdrop-blur shadow-card animate-fadeInUp">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div>
+              <div className="text-lg font-semibold">Weekly Quiz Reminder</div>
+              <div className="text-sm text-neutral-600 dark:text-neutral-400">Take this week’s quick check-in to refine your wellness insights.</div>
+            </div>
+            <Link to="/quizz" className="btn-primary rounded-xl px-5 py-2 text-sm">Take Weekly Quiz</Link>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-4 gap-6">
         <div className="col-span-1 rounded-2xl p-8 text-center glass-effect shadow-glow transform transition-all duration-500 hover:scale-105">
@@ -65,14 +102,7 @@ export default function Dashboard() {
           <p className="mt-3 text-xl leading-relaxed">“{quote}”</p>
         </div>
 
-        <div className="col-span-1 rounded-2xl border p-6 space-y-3 bg-white/60 dark:bg-neutral-900/50 backdrop-blur">
-          <p className="font-semibold">Summary</p>
-          <div className="grid grid-cols-3 gap-3 text-center text-sm">
-            <SummaryPill value="5" label="Books" />
-            <SummaryPill value="8" label="Videos" />
-            <SummaryPill value="3" label="Draw" />
-          </div>
-        </div>
+        {/* Removed hardcoded Summary block (dead UI) */}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -116,14 +146,7 @@ export default function Dashboard() {
   );
 }
 
-function SummaryPill({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl border p-3 flex flex-col items-center justify-center bg-gradient-to-br from-brand.blue/20 to-brand.purple/20 hover:shadow-inner-glow transition-all duration-300 transform hover:scale-105">
-      <div className="text-2xl font-extrabold drop-shadow-sm">{value}</div>
-      <div className="text-xs opacity-70 truncate w-full text-center">{label}</div>
-    </div>
-  );
-}
+// SummaryPill removed with the Summary block
 
 function QuickCard({ title, to, gradient }: { title: string; to: string; gradient: string }) {
   return (

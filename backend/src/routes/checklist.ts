@@ -25,7 +25,7 @@ router.post('/complete', async (req, res) => {
   const auth = (req as any).auth;
   if (!auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
   const userId = auth.userId as string;
-  const { task } = req.body as { task: 'describedDay' | 'videoSummary' | 'readBook' };
+  const { task } = req.body as { task: 'describedDay' | 'videoSummary' | 'readBook' | 'creativeTask' };
   if (!task) return res.status(400).json({ error: 'task required' });
   const today = startOfDayUTC();
   const updated = await prisma.dailyChecklist.upsert({

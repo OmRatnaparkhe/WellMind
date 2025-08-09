@@ -6,7 +6,6 @@ import Checklist from './pages/Checklist';
 import CanvasPage from './pages/CanvasPage';
 import Music from './pages/Music';
 import Library from './pages/Library';
-import Videos from './pages/Videos';
 import Quizz from './pages/Quizz';
 import Appointment from './pages/Appointment';
 import MyDays from './pages/MyDays';
@@ -16,6 +15,7 @@ import CognitiveExercises from './pages/CognitiveExercises';
 import Onboarding from './pages/Onboarding';
 import { SidebarLayout } from './components/SidebarLayout';
 import { ThemeToggle } from './components/ThemeToggle';
+import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 
 function ProtectedRoutes() {
   return (
@@ -27,7 +27,7 @@ function ProtectedRoutes() {
           <Route path="/canvas" element={<CanvasPage />} />
           <Route path="/music" element={<Music />} />
           <Route path="/library" element={<Library />} />
-          <Route path="/videos" element={<Videos />} />
+          {/* Videos page removed; videos shown inline in Checklist */}
           <Route path="/quizz" element={<Quizz />} />
           <Route path="/appointment" element={<Appointment />} />
           <Route path="/my-days" element={<MyDays />} />
@@ -90,6 +90,7 @@ export default function App() {
         {/* This tells the router to handle all other paths with the ProtectedRoutes component */}
         <Route path="/*" element={<ProtectedRoutes />} />
       </Routes>
+      <GlobalAudioPlayer />
     </div>
   );
 }

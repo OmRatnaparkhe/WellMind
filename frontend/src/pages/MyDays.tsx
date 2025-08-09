@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '@/lib/api';
 import { format } from 'date-fns';
-import { Calendar, PenTool, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Calendar, PenTool, MessageCircle, AlertTriangle, BookOpen, Video, NotebookPen } from 'lucide-react';
 
-type DrawingItem = {
+type UnifiedItem = {
   id: string;
-  inputType: 'draw' | 'thoughts' | 'issues';
-  aiInsight?: string;
-  textContent?: string;
+  kind: 'draw' | 'thoughts' | 'issues' | 'journal' | 'video' | 'read';
   createdAt: string;
+  // optional
+  textContent?: string;
+  aiInsight?: string;
+  content?: string;
+  sentimentScore?: number | null;
+  videoId?: string | null;
+  videoSummary?: string;
 };
 
 type DayGroup = {
   date: string;
-  items: DrawingItem[];
+  items: UnifiedItem[];
 };
 
 export default function MyDays() {
@@ -77,7 +82,7 @@ export default function MyDays() {
           My Days
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400 mt-2">
-          Your journey of thoughts, drawings, and reflections over time.
+          Your journey of drawings, journals, videos, and readings over time.
         </p>
       </div>
 
@@ -94,44 +99,73 @@ export default function MyDays() {
               {day.items.map((item) => (
                 <div key={item.id} className="p-5">
                   <div className="flex items-center gap-2 mb-3">
-                    {item.inputType === 'draw' ? (
+                    {item.kind === 'draw' ? (
                       <PenTool size={18} className="text-blue-500" />
-                    ) : item.inputType === 'thoughts' ? (
+                    ) : item.kind === 'thoughts' ? (
                       <MessageCircle size={18} className="text-green-500" />
-                    ) : (
+                    ) : item.kind === 'issues' ? (
                       <AlertTriangle size={18} className="text-amber-500" />
+                    ) : item.kind === 'journal' ? (
+                      <NotebookPen size={18} className="text-purple-500" />
+                    ) : item.kind === 'video' ? (
+                      <Video size={18} className="text-rose-500" />
+                    ) : (
+                      <BookOpen size={18} className="text-emerald-600" />
                     )}
                     <div className="text-sm font-medium">
-                      {item.inputType === 'draw' 
-                        ? 'Drawing' 
-                        : item.inputType === 'thoughts' 
-                          ? 'Thoughts' 
-                          : "What's Not Working"}
+                      {item.kind === 'draw' && 'Drawing'}
+                      {item.kind === 'thoughts' && 'Thoughts'}
+                      {item.kind === 'issues' && "What's Not Working"}
+                      {item.kind === 'journal' && 'Journal'}
+                      {item.kind === 'video' && 'Video Summary'}
+                      {item.kind === 'read' && 'Reading Session'}
                     </div>
                     <div className="text-xs text-neutral-500 ml-auto">
                       {format(new Date(item.createdAt), 'h:mm a')}
                     </div>
                   </div>
 
-                  {item.inputType !== 'draw' && item.textContent && (
+                  {/* Draw/Thoughts/Issues content */}
+                  {(item.kind === 'thoughts' || item.kind === 'issues') && item.textContent && (
                     <div className="mb-4 text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800/50 p-3 rounded-lg">
                       {item.textContent}
                     </div>
                   )}
-
-                  {item.inputType === 'draw' && (
+                  {item.kind === 'draw' && (
                     <div className="mb-4 bg-neutral-100 dark:bg-neutral-800/50 p-3 rounded-lg text-center text-sm text-neutral-500">
                       [Drawing content]
                     </div>
                   )}
 
-                  {item.aiInsight ? (
-                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-4">
-                      <div className="text-xs uppercase tracking-wider text-primary mb-2 font-medium">AI Insight</div>
-                      <div className="text-sm">{item.aiInsight}</div>
+                  {/* Journal content */}
+                  {item.kind === 'journal' && item.content && (
+                    <div className="mb-4 bg-neutral-50 dark:bg-neutral-800/40 p-3 rounded-lg">
+                      <div className="text-sm whitespace-pre-wrap">{item.content}</div>
                     </div>
-                  ) : (
-                    <div className="text-sm text-neutral-500 italic">No AI insight available</div>
+                  )}
+
+                  {/* Video summary */}
+                  {item.kind === 'video' && (
+                    <div className="mb-2 text-sm text-neutral-700 dark:text-neutral-300">
+                      {item.videoSummary || 'Summary submitted'}
+                    </div>
+                  )}
+
+                  {/* Reading */}
+                  {item.kind === 'read' && (
+                    <div className="text-sm text-emerald-700 dark:text-emerald-300">Completed reading session</div>
+                  )}
+
+                  {/* AI Insight (for drawing and text captures) */}
+                  {['draw', 'thoughts', 'issues'].includes(item.kind) && (
+                    item.aiInsight ? (
+                      <div className="bg-primary/5 border border-primary/10 rounded-lg p-4">
+                        <div className="text-xs uppercase tracking-wider text-primary mb-2 font-medium">AI Insight</div>
+                        <div className="text-sm">{item.aiInsight}</div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-neutral-500 italic">No AI insight available</div>
+                    )
                   )}
                 </div>
               ))}

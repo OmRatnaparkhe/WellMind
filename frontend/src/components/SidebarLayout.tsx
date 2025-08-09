@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Home, CheckSquare, PenTool, Video, Music, BookOpen, Calendar, HelpCircle, ChevronLeft, ChevronRight, Clock, Smile, BookType, Brain } from 'lucide-react';
+import { Home, CheckSquare, PenTool, Music, BookOpen, Calendar, HelpCircle, ChevronLeft, ChevronRight, Clock, Smile, BookType, Brain } from 'lucide-react';
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -56,13 +56,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             </div>
             <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Thoughts (Canvas)</span>
           </Link>
-          <Link className={linkClass('/videos')} to="/videos">
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <Video size={20} className="relative" />
-            </div>
-            <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Videos</span>
-          </Link>
+          {/* Videos page removed; video summary flow lives in Checklist */}
           <Link className={linkClass('/quizz')} to="/quizz">
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>

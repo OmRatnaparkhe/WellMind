@@ -1,45 +1,103 @@
 // history.ts
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { format } from 'date-fns'; // Import date-fns
+import { format, startOfDay } from 'date-fns';
 
 const prisma = new PrismaClient();
 const router = Router();
 
-// Get user's drawing history (grouped by day)
+// Shape items into a unified feed per day, including drawings, journals, videos, and reading
 router.get('/', async (req, res) => {
   try {
     const userId = (req as any).auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Get all drawings for the user, ordered by creation date (newest first)
-    const drawings = await prisma.drawing.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Fetch sources in parallel
+    const [drawings, journals, cognitiveEntries, checklists] = await Promise.all([
+      prisma.drawing.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+      prisma.journalEntry.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+      prisma.cognitiveEntry.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+      prisma.dailyChecklist.findMany({ where: { userId }, orderBy: { date: 'desc' } }),
+    ]);
 
-    // Group drawings by the day in the user's local timezone
-    const drawingsByDay = drawings.reduce((acc, drawing) => {
-      // Use date-fns to format the date in the local timezone
-      // The `format` function will use the local timezone of the machine running this code
-      const day = format(new Date(drawing.createdAt), 'yyyy-MM-dd');
-      
-      if (!acc[day]) {
-        acc[day] = [];
+    type UnifiedItem = {
+      id: string;
+      kind: 'draw' | 'thoughts' | 'issues' | 'journal' | 'video' | 'read';
+      createdAt: Date;
+      // optional fields
+      textContent?: string;
+      aiInsight?: string;
+      content?: string;
+      sentimentScore?: number | null;
+      videoId?: string;
+      videoSummary?: string;
+    };
+
+    const items: UnifiedItem[] = [];
+
+    // Drawings and text captures
+    for (const d of drawings) {
+      const inferredKind: UnifiedItem['kind'] = (d as any).inputType === 'thoughts' ? 'thoughts' : (d as any).inputType === 'issues' ? 'issues' : 'draw';
+      items.push({
+        id: d.id,
+        kind: inferredKind,
+        createdAt: d.createdAt,
+        textContent: (d as any).textContent ?? undefined,
+        aiInsight: d.aiInsight ?? undefined,
+      });
+    }
+
+    // Journals
+    for (const j of journals) {
+      items.push({
+        id: j.id,
+        kind: 'journal',
+        createdAt: j.createdAt,
+        content: j.content,
+        sentimentScore: j.sentimentScore ?? null,
+      });
+    }
+
+    // Video summaries (cognitive entries with a videoId or processing type)
+    for (const c of cognitiveEntries) {
+      const hasVideo = !!c.videoId;
+      if (hasVideo || c.exerciseType === 'processing') {
+        items.push({
+          id: c.id,
+          kind: 'video',
+          createdAt: c.createdAt,
+          videoId: c.videoId,
+          videoSummary: c.summary,
+        });
       }
-      
-      acc[day].push(drawing);
-      return acc;
-    }, {} as Record<string, typeof drawings>);
+    }
 
-    // Convert to array format for easier consumption by frontend
-    const result = Object.entries(drawingsByDay).map(([date, items]) => ({
-      date,
-      items,
-    }));
+    // Reading sessions derived from checklist (no dedicated model yet)
+    for (const cl of checklists) {
+      if (cl.readBook) {
+        items.push({
+          id: `read-${cl.id}`,
+          kind: 'read',
+          createdAt: startOfDay(cl.date),
+        });
+      }
+    }
+
+    // Group by yyyy-MM-dd
+    const byDay = items.reduce((acc: Record<string, UnifiedItem[]>, item) => {
+      const day = format(item.createdAt, 'yyyy-MM-dd');
+      acc[day] = acc[day] || [];
+      acc[day].push(item);
+      return acc;
+    }, {});
+
+    const result = Object.entries(byDay)
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([date, list]) => ({ date, items: list.sort((a, b) => +b.createdAt - +a.createdAt) }));
 
     res.json(result);
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: 'Internal Server Error' });
   }

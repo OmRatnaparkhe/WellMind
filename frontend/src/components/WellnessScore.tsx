@@ -7,9 +7,9 @@ type WellnessScoreData = {
   weekOf: string;
   overallScore: number;
   moodScore: number;
-  stressScore: number;
-  sleepScore: number;
-  socialScore: number;
+  // stressScore: number; // unused
+  sleepScore: number; // repurposed as checklist score
+  // socialScore: number; // unused
   cognitiveScore: number;
   recommendations: string[];
   createdAt: string;
@@ -147,9 +147,7 @@ const WellnessScore = () => {
 
       <div className="mb-6">
         {renderScoreBar(wellnessData.moodScore, 'Mood')}
-        {renderScoreBar(wellnessData.stressScore, 'Stress Management')}
-        {renderScoreBar(wellnessData.sleepScore, 'Sleep')}
-        {renderScoreBar(wellnessData.socialScore, 'Social Connection')}
+        {renderScoreBar(wellnessData.sleepScore, 'Checklist Completion')}
         {renderScoreBar(wellnessData.cognitiveScore, 'Cognitive Function')}
       </div>
 

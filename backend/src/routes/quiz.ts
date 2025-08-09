@@ -324,3 +324,104 @@ router.get('/trends/:quizId', async (req, res) => {
 });
 
 export default router;
+
+// --- Weekly dynamic quiz implementation ---
+
+// Generate a deterministic-but-varied set of weekly questions
+function generateWeeklyQuestions(weekStart: Date) {
+  const seed = Math.floor(+weekStart / (24 * 60 * 60 * 1000));
+  const pool: Array<{ id: string; text: string; type: 'scale'; minValue: number; maxValue: number }> = [
+    { id: 'mood', text: 'Over the past week, how often did you feel down, depressed, or hopeless?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'interest', text: 'Over the past week, how often did you have little interest or pleasure in doing things?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'worry', text: 'Over the past week, how often did you feel nervous, anxious, or on edge?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'control', text: 'Over the past week, how often did you find it hard to control your worrying?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'sleep', text: 'Over the past week, how often did you have trouble falling or staying asleep, or sleeping too much?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'energy', text: 'Over the past week, how often did you feel tired or have little energy?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'appetite', text: 'Over the past week, how often did you have poor appetite or overeating?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'concentration', text: 'Over the past week, how often did you have trouble concentrating on things?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'restless', text: 'Over the past week, how often did you become easily annoyed or irritable?', type: 'scale', minValue: 0, maxValue: 3 },
+    { id: 'support', text: 'Over the past week, how supported did you feel by people around you?', type: 'scale', minValue: 0, maxValue: 3 },
+  ];
+
+  // pick 7 questions rotated by seed
+  const startIdx = seed % pool.length;
+  const rotated = [...pool.slice(startIdx), ...pool.slice(0, startIdx)];
+  return rotated.slice(0, 7);
+}
+
+// Return or create this week's dynamic quiz
+router.get('/weekly/current', async (req, res) => {
+  const auth = (req as any).auth;
+  if (!auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+
+    let quiz = await prisma.quiz.findFirst({
+      where: {
+        type: 'weekly',
+        createdAt: { gte: weekStart, lte: weekEnd },
+      },
+    });
+
+    if (!quiz) {
+      const questions = generateWeeklyQuestions(weekStart);
+      quiz = await prisma.quiz.create({
+        data: {
+          title: `Weekly Wellness Check (${weekStart.toISOString().slice(0, 10)})`,
+          description: 'A brief weekly check-in to understand your well-being.',
+          type: 'weekly',
+          questions,
+        },
+      });
+    }
+
+    res.json(quiz);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(e);
+    res.status(500).json({ error: 'Failed to get weekly quiz' });
+  }
+});
+
+// Submit responses for the weekly quiz
+router.post('/weekly/respond', async (req, res) => {
+  const auth = (req as any).auth;
+  if (!auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+  const userId = auth.userId as string;
+  try {
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+
+    const quiz = await prisma.quiz.findFirst({
+      where: { type: 'weekly', createdAt: { gte: weekStart, lte: weekEnd } },
+    });
+    if (!quiz) return res.status(404).json({ error: 'Weekly quiz not found' });
+
+    const Body = z.object({
+      answers: z.array(z.object({ questionId: z.string(), answer: z.number().min(0).max(3) })),
+    });
+    const { answers } = Body.parse(req.body);
+
+    const questions: any[] = (quiz as any).questions ?? [];
+    const maxPerQ = questions.reduce((acc, q) => acc + (q.maxValue ?? 3), 0);
+    const sum = answers.reduce((acc, a) => acc + (typeof a.answer === 'number' ? a.answer : 0), 0);
+    const pct = maxPerQ > 0 ? Math.round((sum / maxPerQ) * 100) : 50;
+
+    const response = await prisma.quizResponse.create({
+      data: {
+        userId,
+        quizId: quiz.id,
+        answers,
+        score: pct,
+      },
+    });
+
+    res.json({ id: response.id, score: pct });
+  } catch (e) {
+    if (e instanceof z.ZodError) return res.status(400).json({ error: 'Invalid data', details: e.format() });
+    // eslint-disable-next-line no-console
+    console.error(e);
+    res.status(500).json({ error: 'Failed to submit weekly quiz' });
+  }
+});

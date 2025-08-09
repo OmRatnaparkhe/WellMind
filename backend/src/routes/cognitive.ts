@@ -12,6 +12,7 @@ const CognitiveEntrySchema = z.object({
   duration: z.number().min(1), // duration in seconds
   metadata: z.record(z.string(), z.any()).optional(),
   summary: z.string().optional().default('Exercise completed'),
+  videoId: z.string().optional(),
 });
 
 // Create a new cognitive exercise entry
@@ -27,7 +28,7 @@ router.post('/', async (req, res) => {
     const cognitiveEntry = await prisma.cognitiveEntry.create({
       data: {
         userId,
-        videoId: 'default', // Using a default value for required field
+        videoId: cognitiveData.videoId ?? 'default',
         summary: cognitiveData.summary || `Completed ${cognitiveData.exerciseType} exercise with score ${cognitiveData.score}`,
         comprehensionScore: cognitiveData.score,
         exerciseType: cognitiveData.exerciseType,
@@ -39,10 +40,12 @@ router.post('/', async (req, res) => {
 
     // Update daily checklist to mark cognitive task as completed
     const today = startOfDay(new Date());
+    // If this came from a video summary, mark that task; otherwise mark generic cognitive task
+    const updateData: any = cognitiveData.videoId ? { videoSummary: true } : { cognitiveTask: true };
     await prisma.dailyChecklist.upsert({
       where: { userId_date: { userId, date: today } },
-      update: { cognitiveTask: true },
-      create: { userId, date: today, cognitiveTask: true },
+      update: updateData,
+      create: { userId, date: today, ...updateData },
     });
 
     res.json(cognitiveEntry);
@@ -115,17 +118,18 @@ router.get('/trends', async (req, res) => {
     
     cognitiveEntries.forEach(entry => {
       const day = startOfDay(entry.createdAt).toISOString();
-      const type = entry.exerciseType;
-      
+      const type = entry.exerciseType ?? 'unknown';
+      const score = typeof entry.score === 'number' ? entry.score : (typeof entry.comprehensionScore === 'number' ? entry.comprehensionScore * 10 : 0);
+
       if (!trendsByType[type]) {
         trendsByType[type] = {};
       }
-      
+
       if (!trendsByType[type][day]) {
         trendsByType[type][day] = { sum: 0, count: 0 };
       }
-      
-      trendsByType[type][day].sum += entry.score;
+
+      trendsByType[type][day].sum += score;
       trendsByType[type][day].count += 1;
     });
 
@@ -185,8 +189,10 @@ router.get('/recommendations', async (req, res) => {
     
     // Sum up scores by type
     cognitiveEntries.forEach(entry => {
-      scoresByType[entry.exerciseType].sum += entry.score;
-      scoresByType[entry.exerciseType].count += 1;
+      const type = entry.exerciseType ?? 'processing';
+      const score = typeof entry.score === 'number' ? entry.score : (typeof entry.comprehensionScore === 'number' ? entry.comprehensionScore * 10 : 0);
+      scoresByType[type].sum += score;
+      scoresByType[type].count += 1;
     });
 
     // Calculate averages and find the lowest scoring type
