@@ -3,7 +3,7 @@ import { apiGet, apiPost } from '@/lib/api';
 import { Link } from 'react-router-dom';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
-
+import { escapeHtml } from '../utils/helpers.js';
 type Checklist = {
   id: string;
   describedDay: boolean;
