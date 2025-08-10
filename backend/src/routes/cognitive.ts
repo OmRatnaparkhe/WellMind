@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { prisma } from '../utils/prisma';
+import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
-
+import { CognitiveEntry } from '@prisma/client';
 const router = Router();
 
 // Schema for cognitive entry
@@ -116,7 +116,7 @@ router.get('/trends', async (req, res) => {
     // Group by exercise type and day
     const trendsByType: Record<string, Record<string, { sum: number; count: number }>> = {};
     
-    cognitiveEntries.forEach(entry => {
+    cognitiveEntries.forEach((entry: CognitiveEntry)=> {
       const day = startOfDay(entry.createdAt).toISOString();
       const type = entry.exerciseType ?? 'unknown';
       const score = typeof entry.score === 'number' ? entry.score : (typeof entry.comprehensionScore === 'number' ? entry.comprehensionScore * 10 : 0);
@@ -188,7 +188,7 @@ router.get('/recommendations', async (req, res) => {
     });
     
     // Sum up scores by type
-    cognitiveEntries.forEach(entry => {
+    cognitiveEntries.forEach((entry: CognitiveEntry) => {
       const type = entry.exerciseType ?? 'processing';
       const score = typeof entry.score === 'number' ? entry.score : (typeof entry.comprehensionScore === 'number' ? entry.comprehensionScore * 10 : 0);
       scoresByType[type].sum += score;

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../utils/prisma';
+import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 // Import the Google Generative AI for sentiment analysis
@@ -230,17 +230,25 @@ router.get('/sentiment/trends', async (req, res) => {
     });
 
     // Group by day and calculate average
-    const sentimentByDay = journalEntries.reduce((acc, entry) => {
-      const day = startOfDay(entry.createdAt).toISOString();
-      if (!acc[day]) {
-        acc[day] = { sum: 0, count: 0 };
-      }
-      if (entry.sentimentScore !== null) {
-        acc[day].sum += entry.sentimentScore;
-        acc[day].count += 1;
-      }
-      return acc;
-    }, {} as Record<string, { sum: number; count: number }>);
+    const sentimentByDay = journalEntries.reduce(
+      (
+        acc: Record<string, { sum: number; count: number }>,
+        entry: { sentimentScore: number | null; createdAt: Date }
+      ) => {
+        const day = startOfDay(entry.createdAt).toISOString();
+        if (!acc[day]) {
+          acc[day] = { sum: 0, count: 0 };
+        }
+        // The 'not: null' in your prisma query ensures sentimentScore is a number here,
+        // but checking is still good practice.
+        if (typeof entry.sentimentScore === 'number') {
+          acc[day].sum += entry.sentimentScore;
+          acc[day].count += 1;
+        }
+        return acc;
+      },
+      {} // The "as" cast is no longer needed here because the types are on the function itself
+    );
 
     // Calculate averages and format response
     const trends = Object.entries(sentimentByDay).map(([day, { sum, count }]) => ({

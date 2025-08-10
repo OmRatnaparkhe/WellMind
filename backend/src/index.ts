@@ -11,12 +11,12 @@ import libraryRouter from './routes/library.js';
 import musicRouter from './routes/music.js';
 import historyRouter from './routes/history.js';
 import moodRouter from './routes/mood.js';
-import journalRouter from './routes/journal';
-import cognitiveRouter from './routes/cognitive';
+import journalRouter from './routes/journal.js';
+import cognitiveRouter from './routes/cognitive.js';
 import quizRouter from './routes/quiz.js';
-import onboardingRouter from './routes/onboarding';
-import wellnessRouter from './routes/wellness';
-import alertsRouter from './routes/alerts';
+import onboardingRouter from './routes/onboarding.js';
+import wellnessRouter from './routes/wellness.js';
+import alertsRouter from './routes/alerts.js';
 
 
 const app = express();
