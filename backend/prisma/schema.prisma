@@ -17,7 +17,7 @@ model UserProfile {
   updatedAt         DateTime  @updatedAt
   consentSettings   Json?     // Privacy and consent settings
   baselineCompleted Boolean   @default(false)
-  
+   isAdmin  Boolean  @default(false)
   // Existing relations
   drawings          Drawing[]
   checklists        DailyChecklist[]
@@ -151,7 +151,7 @@ model Quiz {
   questions      Json
   type           String   // "cognitive" or "reflective"
   createdAt      DateTime @default(now())
-  
+   frequency   String?
   responses      QuizResponse[]
 }
 
@@ -235,7 +235,7 @@ model Therapist {
 model RiskAlert {
   id           String   @id @default(cuid())
   userId       String
-  type         String   // journal, mood, mood_trend, quiz, other
+  type         String?   // journal, mood, mood_trend, quiz, other
   source       String   // journal_entry, mood_entry, mood_analysis, quiz_result, system
   message      String
   severity     String   // low, medium, high
