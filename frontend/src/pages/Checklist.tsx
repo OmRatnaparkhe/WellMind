@@ -34,6 +34,14 @@ export default function Checklist() {
   const [readingMinutes, setReadingMinutes] = useState(15);
   const [readingRunning, setReadingRunning] = useState(false);
   const [readingEndTs, setReadingEndTs] = useState<number | null>(null);
+  const [publicBooks, setPublicBooks] = useState<Array<{ id: string; title: string; author: string }>>([]);
+  const [publicBooksPage, setPublicBooksPage] = useState(1);
+  const [publicBooksNextPage, setPublicBooksNextPage] = useState<number | undefined>(undefined);
+  const [publicBooksLoading, setPublicBooksLoading] = useState(false);
+  const [selectedPublicBook, setSelectedPublicBook] = useState<string | null>(null);
+  const [bookContent, setBookContent] = useState<string>('');
+  const [bookPage, setBookPage] = useState(1);
+  const [bookTotalPages, setBookTotalPages] = useState(1);
 
   const refresh = () => apiGet<Checklist>('/checklist/today').then(setC).catch(() => {});
   useEffect(() => { refresh(); }, []);
@@ -56,6 +64,41 @@ export default function Checklist() {
       return () => clearInterval(timer);
     }
   }, [readingRunning, readingEndTs]);
+
+  // Load public books with pagination
+  const loadBooks = async (page = 1, replace = false) => {
+    try {
+      setPublicBooksLoading(true);
+      const { items, nextPage } = await apiGet<{ items: Array<{ id: string; title: string; author: string }>; nextPage?: number }>(`/library/public?q=focus&page=${page}`);
+      setPublicBooksPage(page);
+      setPublicBooksNextPage(nextPage);
+      setPublicBooks((prev) => (replace ? items : [...prev, ...items]));
+    } finally {
+      setPublicBooksLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadBooks(1, true).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!selectedPublicBook) return;
+      try {
+        const { content, page, totalPages } = await apiGet<{ content: string; page: number; totalPages: number }>(`/library/public/${selectedPublicBook}/content-paged?page=${bookPage}&pageSize=4000`);
+        if (cancelled) return;
+        setBookPage(page);
+        setBookTotalPages(totalPages);
+        setBookContent(`<pre class=\"whitespace-pre-wrap text-sm\">${escapeHtml(content)}</pre>`);
+      } catch {
+        if (!cancelled) setBookContent('<div class=\"text-sm text-red-500\">Failed to load book content.</div>');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPublicBook, bookPage]);
 
   const complete = async (task: 'describedDay' | 'videoSummary' | 'readBook' | 'creativeTask') => {
     await apiPost('/checklist/complete', { task });
@@ -213,6 +256,48 @@ export default function Checklist() {
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>}
           content={open === 'read' && (
             <div className="mt-4 space-y-3">
+              <div>
+                <div className="text-sm mb-2">Pick a public domain book to read:</div>
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {publicBooks.map((b) => (
+                    <button key={b.id} className={`px-3 py-2 rounded border text-left ${selectedPublicBook === b.id ? 'border-primary' : 'border-neutral-300 dark:border-neutral-700'}`} onClick={() => setSelectedPublicBook(b.id)}>
+                      <div className="font-medium truncate">{b.title}</div>
+                      <div className="text-xs opacity-70 truncate">{b.author}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  {publicBooksNextPage ? (
+                    <button
+                      disabled={publicBooksLoading}
+                      onClick={() => loadBooks(publicBooksNextPage!, false)}
+                      className="px-3 py-1 rounded border"
+                    >
+                      {publicBooksLoading ? 'Loading…' : 'Load more books'}
+                    </button>
+                  ) : (
+                    <div className="text-xs opacity-60">No more books</div>
+                  )}
+                </div>
+                {selectedPublicBook && (
+                  <div className="mt-3 bg-white/60 dark:bg-neutral-800/50 p-3 rounded border">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm opacity-70">Open full reader in Library</div>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/library`}
+                          className="px-2 py-1 rounded border"
+                          onClick={() => setOpen(null)}
+                        >
+                          Go to Library
+                        </Link>
+                        <button className="px-2 py-1 rounded border" onClick={() => { setSelectedPublicBook(null); setBookContent(''); setBookPage(1); }}>Close</button>
+                      </div>
+                    </div>
+                    <div className="text-sm opacity-70">For a better reading experience with pagination, use the Library page.</div>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <label className="text-sm">Minutes:</label>
                 <input type="number" className="w-24 px-2 py-1 border rounded" value={readingMinutes} min={1} onChange={(e) => setReadingMinutes(parseInt(e.target.value || '1', 10))} />

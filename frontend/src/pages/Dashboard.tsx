@@ -63,13 +63,13 @@ export default function Dashboard() {
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], []);
 
   return (
-    <div className="space-y-10 animate-fadeInUp">
+    <div className="space-y-6 animate-fadeInUp">
       <HeroHeader />
       
       <RiskAlert />
 
       {weeklyQuizTaken === false && (
-        <div className="rounded-2xl p-6 border bg-gradient-to-br from-brand-blue/10 to-brand-purple/10 dark:from-brand.blue/10 dark:to-brand.purple/10 backdrop-blur shadow-card animate-fadeInUp">
+        <div className="rounded-2xl p-4 border bg-gradient-to-br from-brand-blue/10 to-brand-purple/10 dark:from-brand.blue/10 dark:to-brand.purple/10 backdrop-blur shadow-card animate-fadeInUp">
           <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
             <div>
               <div className="text-lg font-semibold">Weekly Quiz Reminder</div>
@@ -80,8 +80,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid md:grid-cols-4 gap-6">
-        <div className="col-span-1 rounded-2xl p-8 text-center glass-effect shadow-glow transform transition-all duration-500 hover:scale-105">
+      <div className="grid md:grid-cols-4 gap-4">
+        <div className="col-span-1 rounded-2xl p-6 text-center glass-effect shadow-glow transform transition-all duration-500 hover:scale-105">
           <div className="relative mx-auto w-36 h-36">
             <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/30 to-brand-blue/30 blur-xl animate-pulse" />
             <div className="relative w-36 h-36 rounded-full grid place-items-center border-8 border-primary/50 text-4xl font-extrabold backdrop-blur bg-white/30 dark:bg-neutral-900/30 shadow-inner-glow">
@@ -97,7 +97,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="col-span-1 md:col-span-2 rounded-2xl p-8 glass-effect shadow-card hover:shadow-glow transition-all duration-300 transform hover:-translate-y-1">
+        <div className="col-span-1 md:col-span-2 rounded-2xl p-6 glass-effect shadow-card hover:shadow-glow transition-all duration-300 transform hover:-translate-y-1">
           <p className="text-sm text-neutral-500">Daily Nice Quote</p>
           <p className="mt-3 text-xl leading-relaxed">“{quote}”</p>
         </div>
@@ -105,13 +105,13 @@ export default function Dashboard() {
         {/* Removed hardcoded Summary block (dead UI) */}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-4">
         <WellnessScore />
         
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Daily Mental Wellness</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <Link to="/mood-check" className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
               <Smile size={32} className="text-blue-500 mb-2" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Mood Check</span>
@@ -128,7 +128,7 @@ export default function Dashboard() {
             </Link>
           </div>
           
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-300">
               <strong>Tip:</strong> Regular check-ins with your mood and thoughts can help you understand patterns in your mental health and identify triggers.
             </p>
@@ -136,7 +136,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-4 gap-3">
         <QuickCard title="Wanna Draw?" to="/canvas" gradient="from-brand.purple/60 to-brand.blue/60" />
         <QuickCard title="Ear's Magic?" to="/music" gradient="from-brand.blue/60 to-brand.purple/60" />
         <QuickCard title="Read Lives?" to="/library" gradient="from-brand.purple/60 to-brand.blue/60" />

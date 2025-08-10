@@ -17,6 +17,12 @@ export default function GlobalAudioPlayer() {
   useEffect(() => {
     // Load initial playlists lazily
     apiGet<Playlist[]>('/music/playlists').then(setPlaylists).catch(() => {});
+    const handler = (e: any) => {
+      const pid = e?.detail?.playlistId as string | undefined;
+      if (pid) loadPlaylist(pid);
+    };
+    window.addEventListener('music:playPlaylist' as any, handler);
+    return () => window.removeEventListener('music:playPlaylist' as any, handler);
   }, []);
 
   const loadPlaylist = async (playlistId: string) => {

@@ -28,4 +28,14 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json();
 }
 
+// Fetch raw text (for book content) with auth headers
+export async function apiGetText(path: string): Promise<{ text: string; contentType: string | null }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_URL}${path}`, { credentials: 'include', headers });
+  if (!res.ok) throw new Error(await res.text());
+  const contentType = res.headers.get('content-type');
+  const text = await res.text();
+  return { text, contentType };
+}
+
 

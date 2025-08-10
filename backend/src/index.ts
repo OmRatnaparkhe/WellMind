@@ -24,13 +24,20 @@ const app = express();
 app.use(helmet());
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
+// CORS: reflect request origin so credentials work across dev hosts
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN?.split(',') ?? '*',
+    origin: (_origin, callback) => callback(null, true),
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+// Respond to CORS preflight before auth middleware blocks it
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 // --- REFACTORED AUTHENTICATION ---
 // Create a router for all protected API routes
@@ -45,11 +52,21 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-// Attach Clerk auth to all requests
-app.use(ClerkExpressRequireAuth());
+// Attach Clerk auth to all requests, but allow health and library public endpoints unauthenticated
+app.use((req, res, next) => {
+  const openPaths = [
+    '/api/health',
+    '/api/library/public',
+  ];
+  if (req.method === 'GET' && (req.path === '/api/health' || req.path.startsWith('/api/library/public'))) {
+    return next();
+  }
+  return ClerkExpressRequireAuth()(req, res, next);
+});
 
-// Guard: require authenticated user for all /api routes
+// Guard: require authenticated user for secured /api routes
 app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' && req.path.startsWith('/library/public')) return next();
   const auth = (req as any).auth;
   if (!auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
   next();
@@ -58,6 +75,8 @@ app.use('/api/drawings', drawingsRouter);
 app.use('/api/checklist', checklistRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/music', musicRouter);
+// Mount history API so /api/history works
+app.use('/api/history', historyRouter);
 app.use('/api/mood', moodRouter);
 app.use('/api/journal', journalRouter);
 app.use('/api/cognitive', cognitiveRouter);

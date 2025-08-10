@@ -9,12 +9,14 @@ type Book = {
   coverUrl?: string;
   description?: string;
   linkUrl?: string;
+  textUrl?: string;
+  htmlUrl?: string;
 };
 
 /**
  * A new component to display the details for a single selected book.
  */
-function BookDetailView({ book, onBack }: { book: Book, onBack: () => void }) {
+function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
   return (
     // This wrapper div controls the size and centers the detail view
     <div className="max-w-4xl mx-auto animate-fadeInUp">
@@ -42,18 +44,88 @@ function BookDetailView({ book, onBack }: { book: Book, onBack: () => void }) {
             {book.linkUrl && (
               <a 
                 href={book.linkUrl} 
-                target="_blank" // The external link now opens in a new tab from the detail view
+                target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block mt-6 px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors"
               >
-                Find in Store or Library
+                View on Gutenberg
               </a>
             )}
           </div>
         </div>
+
+        {/* Embedded reader */}
+        <BookReader bookId={book.id} />
       </div>
     </div>
   );
+}
+
+function BookReader({ bookId }: { bookId: string }) {
+  const [content, setContent] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:4000/api'}/library/public/${bookId}/content-paged?page=${page}&pageSize=6000`, { credentials: 'include' });
+        if (!res.ok) throw new Error(await res.text());
+        const { content: txt, page: p, totalPages: tp } = await res.json();
+        if (cancelled) return;
+        setPage(p);
+        setTotalPages(tp);
+        setContent(`<pre class=\"whitespace-pre-wrap text-sm\">${escapeHtml(txt)}</pre>`);
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || 'Failed to load content');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bookId, page]);
+
+  if (loading) return <div className="mt-6 text-sm text-primary">Loading book…</div>;
+  if (error) return <div className="mt-6 text-sm text-red-500">{error}</div>;
+  if (!content) return null;
+  return (
+    <div className="mt-6 bg-white/60 dark:bg-neutral-800/50 p-4 rounded-xl shadow-card">
+      <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <button
+          className="px-3 py-2 rounded border disabled:opacity-50"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1}
+        >
+          Prev
+        </button>
+        <div className="text-sm opacity-70">Page {page} of {totalPages}</div>
+        <button
+          className="px-3 py-2 rounded border disabled:opacity-50"
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 
@@ -62,15 +134,45 @@ function BookDetailView({ book, onBack }: { book: Book, onBack: () => void }) {
  */
 export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
-  // 1. State to track the selected book
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [query, setQuery] = useState('self help');
+  const [page, setPage] = useState(1);
+  const [nextPage, setNextPage] = useState<number | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+
+  // Debounce query
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setBooks([]);
+      setPage(1);
+      setNextPage(undefined);
+      void load(query, 1, true);
+    }, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   useEffect(() => {
-    // Added error handling as a best practice
-    apiGet<Book[]>('/library/books')
-      .then(setBooks)
-      .catch((err) => console.error("Failed to fetch books:", err));
+    // initial load
+    void load(query, 1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const load = async (q: string, p: number, replace = false) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({ q: q.trim() || 'self help', page: String(p) });
+      const { items, nextPage: np } = await apiGet<{ items: Book[]; nextPage?: number }>(`/library/public?${params.toString()}`);
+      setNextPage(np);
+      setPage(p);
+      if (replace) setBooks(items);
+      else setBooks((prev) => [...prev, ...items]);
+    } catch (err) {
+      // no-op
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 2. If a book is selected, render the detail view
   if (selectedBook) {
@@ -84,6 +186,14 @@ export default function Library() {
         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-tr from-brand-teal/30 to-brand-indigo/30 rounded-full blur-2xl opacity-70 animate-pulse" />
         <h2 className="text-2xl font-bold relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-brand-indigo to-brand-teal animate-gradient bg-300%">Self-Help Library</h2>
         <p className="text-neutral-600 dark:text-neutral-300 relative z-10 mt-2">Explore books that can guide you on your personal growth journey.</p>
+        <div className="mt-4 relative z-10">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search public domain books (e.g., habit, focus, stoic)"
+            className="w-full md:w-96 px-3 py-2 rounded-lg border dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/50"
+          />
+        </div>
       </div>
       
       <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -110,6 +220,20 @@ export default function Library() {
             </div>
           </button>
         ))}
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        {nextPage ? (
+          <button
+            disabled={loading}
+            onClick={() => load(query, nextPage!, false)}
+            className="px-4 py-2 rounded-lg border bg-white/70 dark:bg-neutral-800/50 hover:bg-white"
+          >
+            {loading ? 'Loading…' : 'Load more'}
+          </button>
+        ) : (
+          <div className="text-sm opacity-60">No more results</div>
+        )}
       </div>
     </div>
   );

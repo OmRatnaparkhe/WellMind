@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Home, CheckSquare, PenTool, Music, BookOpen, Calendar, HelpCircle, ChevronLeft, ChevronRight, Clock, Smile, BookType, Brain } from 'lucide-react';
+import { Home, CheckSquare, PenTool, BookOpen, Calendar, HelpCircle, ChevronLeft, ChevronRight, Clock, Smile, BookType, Brain } from 'lucide-react';
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -12,10 +12,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     }`;
 
   return (
-    <div className="grid grid-cols-[auto_1fr] min-h-screen bg-gradient-to-br from-brand-lavender/10 to-brand-blue/5 dark:from-neutral-900 dark:to-neutral-950">
+    <div className="grid grid-cols-[auto_1fr] h-screen overflow-hidden bg-gradient-to-br from-brand-lavender/10 to-brand-blue/5 dark:from-neutral-900 dark:to-neutral-950">
       <aside 
         className={`relative border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300 ease-in-out ${open ? 'w-72' : 'w-20'} 
-        bg-gradient-to-b from-white/80 to-white/50 dark:from-neutral-900/80 dark:to-neutral-900/50 backdrop-blur-md shadow-xl z-10`}
+        bg-gradient-to-b from-white/80 to-white/50 dark:from-neutral-900/80 dark:to-neutral-900/50 backdrop-blur-md shadow-xl z-10 h-screen overflow-y-auto`}
       >
         <div className="flex items-center justify-between p-5 border-b border-neutral-200/50 dark:border-neutral-800/50">
           <div className="flex items-center gap-3 overflow-hidden">
@@ -64,13 +64,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             </div>
             <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Quizz</span>
           </Link>
-          <Link className={linkClass('/music')} to="/music">
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <Music size={20} className="relative" />
-            </div>
-            <span className={`whitespace-nowrap transition-all duration-300 ${open ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 absolute'}`}>Music</span>
-          </Link>
+          {/* Music page removed; use the global player floating button instead */}
           <Link className={linkClass('/library')} to="/library">
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-brand-blue/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -118,7 +112,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
       </aside>
-      <main className="p-6 lg:p-8 overflow-auto">{children}</main>
+      <main className="p-6 lg:p-8 overflow-y-auto h-screen">{children}</main>
     </div>
   );
 }
